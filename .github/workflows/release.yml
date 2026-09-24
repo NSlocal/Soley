@@ -30,15 +30,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git python3 python3-pip curl unzip lsb-release ca-certificates
 
-      - name: Get & Bootstrap Depot Tools
+      - name: Get Depot Tools & Auto-Initialize
         run: |
           git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
           echo "$GITHUB_WORKSPACE/depot_tools" >> $GITHUB_PATH
           export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
-          # Bootstrap — creates python3_bin_reldir.txt
-          cd depot_tools
-          python3 bootstrap/bootstrap.py
-          cd ..
+          # ✅ Auto-bootstrap by running gclient once
+          gclient --version
 
       - name: Fetch Chromium Android Source
         run: |

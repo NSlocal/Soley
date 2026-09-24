@@ -1,27 +1,24 @@
 target_os = "android"
-target_cpu = "arm64"                  # ARM64 ONLY → no 32-bit[[__LINK_ICON]](https://chromium.googlesource.com/chromium/src/+/main/docs/android_build_instructions.md?f_link_type=f_linkinlinenote&flow_extra=eyJpbmxpbmVfZGlzcGxheV9wb3NpdGlvbiI6MCwiZG9jX3Bvc2l0aW9uIjowLCJkb2NfaWQiOiJkYTA3ZTZkMGIzNmI0NzQ4LTFiZDk5MWYwYWIxMGExODEifQ%3D%3D "[__LINK_ICON]")
+target_cpu = "arm64"
 v8_target_cpu = "arm64"
 
 is_official_build = true
 is_debug = false
-symbol_level = 0                       # Strip all debug → ~30% smaller[[__LINK_ICON]](https://chromium.googlesource.com/chromium/src/+/main/docs/android_build_instructions.md?f_link_type=f_linkinlinenote&flow_extra=eyJpbmxpbmVfZGlzcGxheV9wb3NpdGlvbiI6MCwiZG9jX3Bvc2l0aW9uIjowLCJkb2NfaWQiOiJkYTA3ZTZkMGIzNmI0NzQ4LTFiZDk5MWYwYWIxMGExODEifQ%3D%3D "[__LINK_ICON]")
+symbol_level = 0
 enable_stripping = true
 strip_binaries = true
-is_component_build = false             # Monolithic → no extra overhead[[__LINK_ICON]](https://chromium.googlesource.com/chromium/src/+/main/docs/android_build_instructions.md?f_link_type=f_linkinlinenote&flow_extra=eyJpbmxpbmVfZGlzcGxheV9wb3NpdGlvbiI6MCwiZG9jX3Bvc2l0aW9uIjowLCJkb2NfaWQiOiJkYTA3ZTZkMGIzNmI0NzQ4LTFiZDk5MWYwYWIxMGExODEifQ%3D%3D "[__LINK_ICON]")
+is_component_build = false
 
-# SDK Versions
 target_sdk_version = "36"
 min_sdk_version = "34"
-android_archs = ["arm64-v8a"]          # Single ABI → minimal APK size[[__LINK_ICON]](https://developer.android.google.cn/develop/devices/chromeos/learn/device-support?f_link_type=f_linkinlinenote&flow_extra=eyJkb2NfcG9zaXRpb24iOjAsImRvY19pZCI6IjViZmM4ODdiZDA4ZTVjZDMtMWZmZjk1YjQyOGYzMjBkNSIsImlubGluZV9kaXNwbGF5X3Bvc2l0aW9uIjowfQ%3D%3D&hl=it "[__LINK_ICON]")
+android_archs = ["arm64-v8a"]
 
-# Size Stripping
 enable_reporting = false
 enable_metrics = false
 enable_dawn_tracing = false
 chrome_enable_instrumentation = false
-enable_locale = ["en-US"]              # ENGLISH ONLY → no extra locales
+enable_locale = ["en-US"]
 
-# Feature Flags — ALL 50 APPLIED
 extra_chromium_flags = [
   "--enable-features=QuicTransport,ZstdContentEncoding,BrotliEncoding,"
   "OopRasterization,ZeroCopyRasterization,Prerender2,SimpleCache,"
@@ -29,17 +26,13 @@ extra_chromium_flags = [
   "V8CompilationCache,V8Liftoff,V8TurboFastCalls,WebAssemblyTieredCompilation,"
   "LiteModeDefault,ScriptStreaming,BackgroundTabThrottle,ReduceBackgroundNetwork,"
   "CleanSessionRestore,ReduceReferrerGranularity,ClientHintsDontSend,"
-  "OptimizedHsts,AndroidSurfaces,FrameRateThrottle,AvifImageDecoding,"
-  "WebpAlways,DelayFirstPaintBlocking,ImageCompressionFallback,"
-  "SlimOmnibox,MinimalToolbar,FastScrollAnchoring,SmoothScrollNoJank,"
-  "LinkPreviewSimplified,CacheCompression,LiquidGlassCompactUI",
-
+  "OptimizedHsts,AndroidSurfaces,AvifImageDecoding,WebpAlways,"
+  "SlimOmnibox,MinimalToolbar,CacheCompression,LiquidGlassCompactUI",
   "--disable-features=BackForwardCache,HeavyAdPrivacyMitigations,"
   "NetworkServiceInProcess",
-
   "--disable-background-networking",
   "--disable-default-apps",
   "--disable-domain-reliability",
   "--disable-metrics",
-  "--no-sandbox"                       # Safe non-root Android
+  "--no-sandbox"
 ]

@@ -12,7 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 240  # Chromium takes time!
+    timeout-minutes: 300
 
     steps:
       - uses: actions/checkout@v4
@@ -21,43 +21,47 @@ jobs:
         run: |
           echo "APK_NAME=Soley-Browser-arm64-v8a-signed-v${GITHUB_REF_NAME#v}.apk" >> $GITHUB_ENV
 
-      # === DEPENDENCIES & CHROMIUM CHECKOUT ===
+      # ✅ FIXED: Install deps WITHOUT pip3
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git python3 python3-pip curl unzip lsb-release
-          pip3 install depot_tools
+          sudo apt-get install -y git python3 python3-pip curl unzip lsb-release ca-certificates
 
-      - name: Fetch Chromium Depot Tools
+      # ✅ CORRECT WAY: Clone depot_tools directly from official repo
+      - name: Get Depot Tools
         run: |
           git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
           echo "$GITHUB_WORKSPACE/depot_tools" >> $GITHUB_PATH
           export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
 
-      - name: Pull Chromium Source (ARM64 Android)
+      - name: Fetch Chromium Android Source
         run: |
+          export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
           mkdir -p ~/chromium && cd ~/chromium
           fetch --nohooks android
           cd src
-          git checkout main
           gclient runhooks
 
-      - name: Apply Our Build Config
+      - name: Apply Build Config & Generate
         run: |
+          export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
           cd ~/chromium/src
           cp $GITHUB_WORKSPACE/args.gn ./
           gn gen out/Release --args="$(cat args.gn)"
 
-      - name: Build Browser
+      - name: Build Browser APK
         run: |
+          export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
           cd ~/chromium/src
           autoninja -C out/Release chrome_public_apk
 
-      - name: Locate Built APK
+      - name: Prepare APK for Signing
         run: |
-          find ~/chromium/src/out/Release -name "*.apk" -type f
           mkdir -p $GITHUB_WORKSPACE/apk_out
-          cp ~/chromium/src/out/Release/apks/*.apk $GITHUB_WORKSPACE/apk_out/ || true
+          find ~/chromium/src/out/Release -maxdepth 3 -name "*.apk" -type f
+          cp ~/chromium/src/out/Release/apks/*.apk $GITHUB_WORKSPACE/apk_out/ 2>/dev/null || \
+          cp ~/chromium/src/out/Release/*.apk $GITHUB_WORKSPACE/apk_out/ 2>/dev/null || true
+          ls -la $GITHUB_WORKSPACE/apk_out/
 
       - name: Sign APK
         uses: r0adkll/sign-android-release@v1
@@ -68,7 +72,7 @@ jobs:
           keyStorePassword: ${{ secrets.KEY_STORE_PASS }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload Release
+      - name: Upload Signed Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:

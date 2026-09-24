@@ -1,0 +1,29 @@
+name: Soley-Browser Build & Sign
+on:
+  push: { tags: ['v*'] }
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set Build Env
+        run: |
+          echo "APK_NAME=Soley-Browser-arm64-v8a-signed-v${GITHUB_REF_NAME#v}.apk" >> $GITHUB_ENV
+      - name: Configure GN
+        run: gn gen out/Release --args="$(cat args.gn)"
+      - name: Build
+        run: autoninja -C out/Release chrome_public_apk
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: out/Release/apks
+          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASS }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+      - name: Upload Release
+        uses: softprops/action-gh-release@v1
+        files: out/Release/apks/*.apk
+        

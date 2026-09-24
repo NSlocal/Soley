@@ -19,27 +19,37 @@ jobs:
 
       - name: Set Build Env
         run: |
-          echo "APK_NAME=Soley-Browser-arm64-v8a-signed-v${GITHUB_REF_NAME#v}.apk" >> $GITHUB_ENV
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "APK_NAME=Soley-Browser-arm64-v8a-signed-${GITHUB_REF#refs/tags/}.apk" >> $GITHUB_ENV
+          else
+            echo "APK_NAME=Soley-Browser-arm64-v8a-signed-dev-${GITHUB_SHA::7}.apk" >> $GITHUB_ENV
+          fi
 
-      # ✅ FIXED: Install deps WITHOUT pip3
       - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y git python3 python3-pip curl unzip lsb-release ca-certificates
 
-      # ✅ CORRECT WAY: Clone depot_tools directly from official repo
-      - name: Get Depot Tools
+      - name: Get & Bootstrap Depot Tools
         run: |
           git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
           echo "$GITHUB_WORKSPACE/depot_tools" >> $GITHUB_PATH
           export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
+          # Bootstrap — creates python3_bin_reldir.txt
+          cd depot_tools
+          python3 bootstrap/bootstrap.py
+          cd ..
 
       - name: Fetch Chromium Android Source
         run: |
           export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
           mkdir -p ~/chromium && cd ~/chromium
           fetch --nohooks android
-          cd src
+
+      - name: Run Gclient Hooks
+        run: |
+          export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
+          cd ~/chromium/src
           gclient runhooks
 
       - name: Apply Build Config & Generate
@@ -58,7 +68,6 @@ jobs:
       - name: Prepare APK for Signing
         run: |
           mkdir -p $GITHUB_WORKSPACE/apk_out
-          find ~/chromium/src/out/Release -maxdepth 3 -name "*.apk" -type f
           cp ~/chromium/src/out/Release/apks/*.apk $GITHUB_WORKSPACE/apk_out/ 2>/dev/null || \
           cp ~/chromium/src/out/Release/*.apk $GITHUB_WORKSPACE/apk_out/ 2>/dev/null || true
           ls -la $GITHUB_WORKSPACE/apk_out/

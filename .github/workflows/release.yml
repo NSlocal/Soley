@@ -1,9 +1,8 @@
-name: Soley-Browser Build & Sign
+name: Soley-Browser Build (Cached Fast)
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
   workflow_dispatch: {}
 
 permissions:
@@ -12,37 +11,47 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 300
+    timeout-minutes: 120
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set Build Env
+      - name: Set Build Name
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            echo "APK_NAME=Soley-Browser-arm64-v8a-signed-${GITHUB_REF#refs/tags/}.apk" >> $GITHUB_ENV
-          else
-            echo "APK_NAME=Soley-Browser-arm64-v8a-signed-dev-${GITHUB_SHA::7}.apk" >> $GITHUB_ENV
-          fi
+          echo "APK_NAME=Soley-Browser-unsigned-${GITHUB_SHA::7}.apk" >> $GITHUB_ENV
 
-      - name: Install System Dependencies
+      - name: Install Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y git python3 python3-pip curl unzip lsb-release ca-certificates
+          sudo apt-get install -y git python3 curl unzip lsb-release
 
-      - name: Get Depot Tools & Auto-Initialize
+      - name: Get Depot Tools
         run: |
           git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
           echo "$GITHUB_WORKSPACE/depot_tools" >> $GITHUB_PATH
           export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
-          # ✅ Auto-bootstrap by running gclient once
           gclient --version
 
-      - name: Fetch Chromium Android Source
+      # ✅ CACHE — SUMBER DISIMPAN! TIDAK DOWNLOAD ULANG!
+      - name: Restore Chromium Cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ~/chromium
+          key: chromium-cache-${{ hashFiles('args.gn') }}
+          restore-keys: |
+            chromium-cache-
+
+      - name: Fetch Chromium Source
         run: |
           export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
           mkdir -p ~/chromium && cd ~/chromium
-          fetch --nohooks android
+          # --with-git-cache = cepat jika cache sudah ada
+          if [ ! -d "src" ]; then
+            fetch --nohooks --with-git-cache android
+          else
+            echo "✅ Cache dipakai — skip download penuh!"
+          fi
 
       - name: Run Gclient Hooks
         run: |
@@ -50,40 +59,28 @@ jobs:
           cd ~/chromium/src
           gclient runhooks
 
-      - name: Apply Build Config & Generate
+      - name: Config & Generate
         run: |
           export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
           cd ~/chromium/src
           cp $GITHUB_WORKSPACE/args.gn ./
           gn gen out/Release --args="$(cat args.gn)"
 
-      - name: Build Browser APK
+      - name: Build APK
         run: |
           export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
           cd ~/chromium/src
           autoninja -C out/Release chrome_public_apk
 
-      - name: Prepare APK for Signing
+      - name: Prepare APK
         run: |
           mkdir -p $GITHUB_WORKSPACE/apk_out
           cp ~/chromium/src/out/Release/apks/*.apk $GITHUB_WORKSPACE/apk_out/ 2>/dev/null || \
           cp ~/chromium/src/out/Release/*.apk $GITHUB_WORKSPACE/apk_out/ 2>/dev/null || true
           ls -la $GITHUB_WORKSPACE/apk_out/
 
-      - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          releaseDirectory: apk_out
-          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASS }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-
-      - name: Upload Signed Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            apk_out/*.apk
-          generate_release_notes: true
-          fail_on_unmatched_files: true
+          name: Soley-Browser-APK
+          path: apk_out/*.apk

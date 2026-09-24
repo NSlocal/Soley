@@ -32,7 +32,7 @@ jobs:
           export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
           gclient --version
 
-      # ✅ CACHE — SUMBER DISIMPAN! TIDAK DOWNLOAD ULANG!
+      # ✅ CACHE — SIMPAN SUMBER, TIDAK DOWNLOAD ULANG!
       - name: Restore Chromium Cache
         id: cache
         uses: actions/cache@v4
@@ -46,11 +46,11 @@ jobs:
         run: |
           export PATH="$PATH:$GITHUB_WORKSPACE/depot_tools"
           mkdir -p ~/chromium && cd ~/chromium
-          # --with-git-cache = cepat jika cache sudah ada
           if [ ! -d "src" ]; then
-            fetch --nohooks --with-git-cache android
+            echo "📥 Download penuh pertama kali..."
+            fetch --nohooks android
           else
-            echo "✅ Cache dipakai — skip download penuh!"
+            echo "✅ Cache dipakai — skip download!"
           fi
 
       - name: Run Gclient Hooks
